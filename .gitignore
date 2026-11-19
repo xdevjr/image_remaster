@@ -1,0 +1,15 @@
+# Frontend
+node_modules/
+dist/
+
+# Tauri / Rust
+src-tauri/target/
+src-tauri/gen/schemas/
+src-tauri/libs/
+
+# Modelos baixados
+models/*.onnx
+
+# Misc
+.DS_Store
+*.log

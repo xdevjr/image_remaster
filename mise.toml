@@ -1,0 +1,15 @@
+[tools]
+rust = "1.100.0"   # stable atual
+bun = "1.4.5"      # runtime + package manager
+
+[tasks.dev]
+description = "Rodar o app Tauri em modo dev"
+run = "bun run tauri dev"
+
+[tasks.build]
+description = "Build de produção"
+run = "bash scripts/build_appimage.sh"
+
+[tasks.model]
+description = "Baixar o modelo Real-ESRGAN ONNX"
+run = "bash scripts/download_model.sh"
