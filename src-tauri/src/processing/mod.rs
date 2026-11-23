@@ -5,7 +5,7 @@ pub mod worker;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-pub use worker::run_job;
+pub use worker::{run_flow, run_job};
 
 /// Modelo usado quando a UI não especifica nenhum.
 pub const DEFAULT_MODEL: &str = "qualidade";

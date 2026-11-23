@@ -3,6 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 import type {
+  FlowNode,
+  FlowResult,
   ImageInfo,
   RuntimeInfo,
   StartupInfo,
@@ -31,6 +33,10 @@ export function useImageJob() {
     upscale: (path: string, mode: string, scale: number, model: string) =>
       invoke<UpscaleResult>("upscale_image", {
         request: { path, mode, scale, model },
+      }),
+    upscaleFlow: (path: string, nodes: FlowNode[]) =>
+      invoke<FlowResult[]>("upscale_flow", {
+        request: { path, nodes },
       }),
     saveImage: (sourcePath: string, destPath: string) =>
       invoke<string>("save_image", { sourcePath, destPath }),

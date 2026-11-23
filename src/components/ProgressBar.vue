@@ -34,6 +34,12 @@ const label = computed(() => {
 
 const percent = computed(() => Math.round(props.progress?.percent ?? 0));
 
+const stepPrefix = computed(() => {
+  const progress = props.progress;
+  if (!progress?.step || !progress.totalSteps || progress.totalSteps <= 1) return "";
+  return `Etapa ${progress.step}/${progress.totalSteps} · `;
+});
+
 const elapsed = computed(() => {
   const ms = props.progress?.elapsedMs ?? 0;
   if (ms < 1000) return `${ms} ms`;
@@ -44,7 +50,7 @@ const elapsed = computed(() => {
 <template>
   <div v-if="busy" class="progress-wrap">
     <div class="progress-meta">
-      <span class="progress-label">{{ label }}</span>
+      <span class="progress-label">{{ stepPrefix }}{{ label }}</span>
       <span class="progress-elapsed">{{ elapsed }}</span>
     </div>
     <div class="progress-track">

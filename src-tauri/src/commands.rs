@@ -29,12 +29,59 @@ pub struct UpscaleRequest {
     pub model: String,
 }
 
+#[derive(Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FlowNode {
+    pub id: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub parent_id: Option<String>,
+    pub mode: String,
+    pub scale: u32,
+    #[serde(default)]
+    pub target_width: Option<u32>,
+    #[serde(default)]
+    pub target_height: Option<u32>,
+    #[serde(default)]
+    pub model: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FlowRequest {
+    pub path: String,
+    pub nodes: Vec<FlowNode>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FlowResult {
+    pub node_id: String,
+    pub parent_id: Option<String>,
+    pub output_path: String,
+    pub width: u32,
+    pub height: u32,
+    pub input_width: u32,
+    pub input_height: u32,
+    pub target_width: Option<u32>,
+    pub target_height: Option<u32>,
+    pub used_model: bool,
+    pub elapsed_ms: u64,
+    pub mode: String,
+    pub scale: u32,
+    pub model: String,
+    pub backend: String,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpscaleResult {
     pub output_path: String,
     pub width: u32,
     pub height: u32,
+    pub input_width: u32,
+    pub input_height: u32,
     pub elapsed_ms: u64,
     pub mode: String,
     pub scale: u32,
@@ -168,6 +215,41 @@ pub async fn upscale_image(
     })
     .await
     .map_err(|e| format!("A tarefa de upscale falhou: {e}"))?
+}
+
+#[tauri::command]
+pub async fn upscale_flow(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    request: FlowRequest,
+) -> Result<Vec<FlowResult>, String> {
+    if request.nodes.is_empty() {
+        return Err("Adicione pelo menos um nó ao fluxo.".into());
+    }
+
+    let cancel = state.cancel.clone();
+    cancel.store(false, Ordering::SeqCst);
+
+    let cache_dir = state.cache_dir.clone();
+    let env = state.env.clone();
+    let sessions = state.sessions.clone();
+    let models = state.models.clone();
+    let app_handle = app.clone();
+
+    tauri::async_runtime::spawn_blocking(move || {
+        processing::run_flow(
+            &app_handle,
+            &request.path,
+            &request.nodes,
+            &cache_dir,
+            Some(env),
+            sessions,
+            &models,
+            cancel,
+        )
+    })
+    .await
+    .map_err(|e| format!("A tarefa do fluxo falhou: {e}"))?
 }
 
 #[tauri::command]

@@ -63,6 +63,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::load_image,
             commands::upscale_image,
+            commands::upscale_flow,
             commands::save_image,
             commands::cancel_job,
             commands::runtime_info,

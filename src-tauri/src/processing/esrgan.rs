@@ -30,7 +30,7 @@ static GPU_TILE: AtomicU32 = AtomicU32::new(0);
 /// VRAM total em MiB (0 = desconhecida).
 static GPU_TOTAL_MB: AtomicU32 = AtomicU32::new(0);
 /// Último modelo/tamanho processado, para liberar arenas ao mudar de imagem.
-static LAST_JOB: Mutex<Option<(String, u32, u32)>> = Mutex::new(None);
+static LAST_JOB: Mutex<Option<String>> = Mutex::new(None);
 
 fn thread_count() -> usize {
     std::thread::available_parallelism()
@@ -334,20 +334,15 @@ where
 {
     initialize_backend();
 
-    // Libera a arena CUDA quando o modelo ou o tamanho da imagem muda; isso
-    // evita que a memória cresça entre jobs e cause OOM no segundo.
-    let (src_w, src_h) = src.dimensions();
+    // Mantém o modelo carregado entre nós do mesmo fluxo. A troca de modelo
+    // libera as arenas CUDA; mudanças de tamanho reaproveitam a sessão e, se
+    // faltar VRAM, o retry abaixo libera e recria.
     let changed = {
         let mut guard = LAST_JOB
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let changed = match guard.as_ref() {
-            Some((last_model, width, height)) => {
-                last_model != model_id || *width != src_w || *height != src_h
-            }
-            None => true,
-        };
-        *guard = Some((model_id.to_string(), src_w, src_h));
+        let changed = guard.as_deref() != Some(model_id);
+        *guard = Some(model_id.to_string());
         changed
     };
     if changed {
@@ -407,6 +402,8 @@ where
                                 total: 1,
                                 percent: 6.0,
                                 elapsed_ms: started.elapsed().as_millis() as u64,
+                                step: None,
+                                total_steps: None,
                             });
                             continue;
                         }
@@ -543,6 +540,8 @@ where
                 total,
                 percent,
                 elapsed_ms: started.elapsed().as_millis() as u64,
+                step: None,
+                total_steps: None,
             });
         }
     }

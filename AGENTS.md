@@ -56,7 +56,7 @@ cd src-tauri && cargo run --release --example upscale_file -- /tmp/in.jpg /tmp/o
   progress is the `upscale:progress` event. Structs use camelCase; JS passes camelCase args.
 - `src-tauri/src/processing/mod.rs` — model catalog (`MODELS`: `rapido`/`qualidade`/`nitido`/
   `anime`, default `qualidade`) and path resolution.
-- `src-tauri/src/processing/` — `worker.rs` (orchestration, cache, 6 MP limit, result has
+- `src-tauri/src/processing/` — `worker.rs` (orchestration, cache, ~32 MP input limit, result has
   `model`/`backend`), `esrgan.rs` (tiling, sessions per model, GPU), `classic.rs` (Lanczos3 +
   unsharp; scale 1 skips resize). Scales: 1 = remaster at original size (4x model then downscale),
   2 = 4x then Lanczos downscale, 4 = native model output.
@@ -81,12 +81,13 @@ cd src-tauri && cargo run --release --example upscale_file -- /tmp/in.jpg /tmp/o
   512 px OOMs on 8 GB with x4plus. `IMAGE_REMASTER_TILE` overrides. CUDA is configured with
   heuristic conv search, TF32, no max workspace, `SameAsRequested` arena, and a BFC memory limit of
   ~80% of total VRAM (leaves headroom for the desktop).
-- **VRAM between jobs:** each model session keeps its own CUDA arena, so `LAST_JOB` (model + input
-  dimensions) is tracked and sessions are cleared when either changes; this is what prevents the
-  second image from OOMing. If an allocation still fails, `upscale()` retries once with a fresh
-  session at the same tile, then falls back to 192/128 px tiles. OOM is detected by strings like
-  `Failed to allocate memory`, `Available memory of`, `requested bytes`, `bfc_arena`. Persisting
-  OOM returns a user-friendly `memory_error` (GPU memory insufficient).
+- **VRAM between jobs:** each model session keeps its own CUDA arena. `LAST_JOB` tracks only the
+  model id: reusing the same model across flow nodes/images keeps the session loaded (much faster),
+  and only a model change clears the sessions. If an allocation fails (e.g. a larger input reusing
+  an old arena), `upscale()` retries once with a fresh session at the same tile, then falls back to
+  192/128 px tiles. OOM is detected by strings like `Failed to allocate memory`, `Available memory
+  of`, `requested bytes`, `bfc_arena`. Persisting OOM returns a user-friendly `memory_error` (GPU
+  memory insufficient).
 - If a bundle fails, delete `src-tauri/target/release/bundle/appimage/Image Remaster.AppDir` and
   `src-tauri/target/release/providers` — stale `.so` files there cause misleading errors.
 
